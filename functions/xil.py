@@ -14,12 +14,12 @@ import logging
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-        logging.FileHandler("xil_progress.log"),  # Saves to this file
-        logging.StreamHandler()                  # Also prints to console
-    ]
+  level=logging.INFO,
+  format='%(asctime)s [%(levelname)s] %(message)s',
+  handlers=[
+    logging.FileHandler("xil_progress.log"),  # Saves to this file
+    logging.StreamHandler()                  # Also prints to console
+  ]
 )
 logger = logging.getLogger(__name__)
 

@@ -21,11 +21,16 @@ def visualize_5_samples(dataset: Any, label: int) -> None:
     axes[a].set_xticks([])
     axes[a].set_yticks([])
     #axes[a].set_xlabel(f'label: {y}')
-    
+
 
 def load_data(name: str, **kwargs: Any):
-  # to choose a dataset with a dict and load that data
-
+  """Load a dataset.
+  Args:
+    name (str): name of the dataset.
+    kwargs (Any): additional dataset arguments.
+  Returns:
+    tuple: train, val and test datasets.
+  """
   datasets = {
     "DecoyMNIST": load_decoyMNIST,
     "DecoyFashionMNIST": load_decoyFashionMNIST
@@ -40,7 +45,13 @@ def load_data(name: str, **kwargs: Any):
 
 
 def create_dataloaders(data_list: list, params_list: List[dict]) -> tuple:
-  # utility to create a dataloader
+  """Create dataloaders given train val and test and a list of params for each one.
+  Args:
+    data_list (list): list of datasets.
+    params_list (list):list of dataloader params for each dataset.
+  Returns:
+    tuple: dataloaders.
+  """
   loader_list = []
   for data, params in zip(data_list, params_list):
     data = data

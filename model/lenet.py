@@ -15,7 +15,7 @@ class ModernLeNet(nn.Module):
     self.fc1 = nn.Linear(9216, 128)
     self.fc2 = nn.Linear(128, 10)
 
-  def forward(self, x: torch.Tensor) -> torch.Tensor:
+  def forward(self, x: torch.Tensor, return_features:bool=False) -> torch.Tensor:
     """Forward pass through the model."""
     x = self.conv1(x)
     x = F.relu(x)
@@ -26,12 +26,23 @@ class ModernLeNet(nn.Module):
     x = torch.flatten(x, 1)
     x = self.fc1(x)
     x = F.relu(x)
+
+    if return_features:
+      return x
+
     x = self.dropout2(x)
     x = self.fc2(x)
     return x # F.log_softmax(x, dim=1)
 
 
 def load_lenet(device: str = "cuda") -> ModernLeNet:
+  """Load LeNet model.
+  Args:
+    device (str): device where model is loaded.
+  Returns:
+    ModernLeNet: model created.
+  
+  """
   model = ModernLeNet()
   model = model.to(device)
   return model

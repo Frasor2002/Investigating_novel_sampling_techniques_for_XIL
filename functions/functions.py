@@ -196,7 +196,9 @@ def save_checkpoint(model_name: str, model: nn.Module) -> None:
     model_name (str): name given to the checkpoint.
     model (nn.Module): model to save a checkpoint of.
   """
-  path = os.path.join(MODEL_DIR,'bin', model_name + '.pt')
+  folder_path = os.path.join(MODEL_DIR,'bin')
+  os.makedirs(folder_path, exist_ok=True)
+  path = os.path.join(folder_path, model_name + '.pt')
   torch.save(model.state_dict(), path)
 
 

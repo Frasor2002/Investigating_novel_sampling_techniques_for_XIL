@@ -3,7 +3,6 @@ from typing import Optional
 import os
 from dataset.decoy_dataset import prepare_generic_data, load_decoy
 
-
 # Get dataset path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(BASE_DIR, "data")

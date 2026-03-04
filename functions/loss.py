@@ -79,7 +79,6 @@ class RRR(Module):
 
 
 
-
 def load_loss_fun(name: str, **kwargs: Any) -> Any:
   """Load loss function.
   Args:

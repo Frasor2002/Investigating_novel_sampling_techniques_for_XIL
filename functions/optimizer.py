@@ -10,7 +10,6 @@ def load_optimizer(name: str, params: Iterable, **kwargs: Any) -> Optimizer:
   Returns:
     Optimizer: optimizer initialized.
   """
-
   optimizers = {
     "SGD": SGD,
     "Adam": Adam,
