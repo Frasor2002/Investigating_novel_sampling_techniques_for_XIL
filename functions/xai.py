@@ -123,7 +123,7 @@ def explain_dataset(loader: DataLoader, model: nn.Module, device: str="cpu") -> 
   """Compute explaination for an entire dataset for visualization.
   Args:
     loader (DataLoader): dataloader with data to explain.
-    model (Module): model to use for explaiantion.
+    model (Module): model to use for explanation.
     device (str): device where to compute explainations.
   """
   model.eval()

@@ -29,7 +29,7 @@ def prepare_data(
   )
 
 
-def load_decoyFashionMNIST(seed: int = 123, reload: bool = False, bias_ratio:list=[1]*10) -> tuple:
+def load_decoyFashionMNIST(seed: int = 123, reload: bool = True, bias_ratio:list=[1]*10) -> tuple:
   """Load DecoyFashionMNIST dataset.
   Args:
     seed (int): seed for reproducibility.

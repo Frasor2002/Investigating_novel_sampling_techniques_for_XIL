@@ -10,3 +10,7 @@ def enable_reproducibility(seed: int = 123) -> None:
   random.seed(seed)
   torch.manual_seed(seed)
   np.random.seed(seed)
+
+
+def parse_args():
+  pass
