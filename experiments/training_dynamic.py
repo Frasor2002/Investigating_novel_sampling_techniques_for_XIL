@@ -48,7 +48,7 @@ def exp_train_dynamics(
     train_loader, 
     optim, 
     loss, 
-    n_epochs=10, 
+    n_epochs=20, 
     eval_loader=val_loader, 
     device=device
   )

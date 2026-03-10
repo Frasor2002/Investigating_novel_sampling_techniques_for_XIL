@@ -1,11 +1,3 @@
-import torch
-from model.lenet import load_lenet
-from dataset.dataset import load_data, create_dataloaders
-from functions.optimizer import load_optimizer
-from functions.loss import load_loss_fun
-from functions.functions import train_model, eval_model, save_checkpoint
-from functions.xil import reset_model
-from utils.utils import enable_reproducibility
 from experiments.training_dynamic import exp_train_dynamics
 from experiments.model_output import exp_model_outputs
 from experiments.explaination_entropy import exp_explaination_entropy
@@ -13,18 +5,12 @@ from experiments.utils import log_results, plot_results
 
 # Experiment seed
 SEED = 123
-
 DATASET_NAMES = ["DecoyMNIST", "DecoyFashionMNIST"]
-
-# Params
 DATASET = DATASET_NAMES[0]
 VARIATION = 2
-	
-if __name__ == "__main__":
-  use_cuda = torch.cuda.is_available()
-  device = 'cuda' if use_cuda else 'cpu'
 
-  res1 = exp_train_dynamics(seed=SEED, dataset="DecoyMNIST", variation=VARIATION)
+def run(seed, dataset, variation):
+  res1 = exp_train_dynamics(seed=SEED, dataset=DATASET, variation=VARIATION)
   log_results(res1, "train_dynamics")
 
   res2 = exp_model_outputs(seed=SEED,dataset="DecoyMNIST", variation=VARIATION)
@@ -32,3 +18,6 @@ if __name__ == "__main__":
 
   res3 = exp_explaination_entropy(seed=SEED, dataset="DecoyMNIST", variation=VARIATION)
   log_results(res3, "explaination_entropy")
+	
+if __name__ == "__main__":
+  run(SEED, DATASET, VARIATION)

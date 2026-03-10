@@ -51,7 +51,7 @@ def log_results(result: dict, filename: str) -> None:
     total_corr = result['total']
     class_corr = result['class']
     
-    f.write(f"Total correlation: stat={total_corr[0]:.4f} | pval={total_corr[0]:.6f}")
+    f.write(f"Total correlation: stat={total_corr[0]:.4f} | pval={total_corr[1]:.6f}")
     f.write("\n\n")
     for key, val in class_corr.items():
       f.write(f"Class correlation for label {key}: stat={val[0]:.4f} | pval={val[1]:.6f}")

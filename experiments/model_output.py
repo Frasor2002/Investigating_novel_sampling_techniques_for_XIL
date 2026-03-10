@@ -122,7 +122,7 @@ def exp_model_outputs(
     train_loader, 
     optim, 
     loss, 
-    n_epochs=2, 
+    n_epochs=10, 
     eval_loader=val_loader, 
     device=device
   )
