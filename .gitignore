@@ -1,7 +1,7 @@
 
 dataset/data
 model/bin
-plot
+log
 
 
 # Byte-compiled / optimized / DLL files

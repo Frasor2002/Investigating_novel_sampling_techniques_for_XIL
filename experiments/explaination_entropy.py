@@ -34,16 +34,21 @@ def compute_exp_entropy(attrs: torch.Tensor):
 
   return entropy
 
-def exp_explaination_entropy(device: str = "cpu", seed: int = 123, dataset: str = "DecoyMNIST"):
+def exp_explaination_entropy(
+    seed: int = 123, 
+    dataset: str = "DecoyMNIST",
+    variation: int = 0) -> dict:
   """Run experiment to see how explaination entropy correlate with confounder presence.
   Args:
-    device (str): device where computation occurs.
     seed (int): seed for the experiment.
     dataset (str): dataset to use for the experiment.
     metric (str): metric to use for simplicity.
   Returns:
     dict: correlation between confounder presence and explaination entropy.
   """
+  use_cuda = torch.cuda.is_available()
+  device = 'cuda' if use_cuda else 'cpu'
+
   enable_reproducibility(seed)
   model = load_lenet(device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
@@ -53,7 +58,8 @@ def exp_explaination_entropy(device: str = "cpu", seed: int = 123, dataset: str 
     dataset, 
     seed=seed, 
     reload=True,
-    bias_ratio=[0.99]*10
+    bias_ratio=[0.99]*10,
+    variation=variation
   )
   
   data = [train_set, val_set, test_set]

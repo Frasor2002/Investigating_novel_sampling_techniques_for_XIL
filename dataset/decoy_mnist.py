@@ -13,7 +13,8 @@ RAW_DIR = os.path.join(DATA_PATH, "raw")
 def prepare_data(
   val_size: float=0.2, 
   random_state: int=123,
-  bias_ratio: list=[1]*10
+  bias_ratio: list=[1]*10,
+  variation: int= 0
 ) -> None:
   """Prepare data by loading MNIST and confounding it.
   Args:
@@ -26,11 +27,12 @@ def prepare_data(
     save_path=SAVE_PATH,
     val_size=val_size,
     random_state=random_state,
-    bias_ratio=bias_ratio
+    bias_ratio=bias_ratio,
+    variation=variation
   )
 
 
-def load_decoyMNIST(seed: int = 123, reload: bool = True, bias_ratio:list=[1]*10) -> tuple:
+def load_decoyMNIST(seed: int = 123, reload: bool = True, bias_ratio:list=[1]*10, variation: int= 0) -> tuple:
   """Load DecoyMNIST dataset.
   Args:
     seed (int): seed for reproducibility.
@@ -43,5 +45,6 @@ def load_decoyMNIST(seed: int = 123, reload: bool = True, bias_ratio:list=[1]*10
     prepare_fn=prepare_data,
     seed=seed,
     reload=reload,
-    bias_ratio=bias_ratio
+    bias_ratio=bias_ratio,
+    variation=variation
   )

@@ -13,7 +13,12 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
 
-def extract_model_outputs(model: torch.nn.Module, train_loader: DataLoader, return_features: bool = False, seed: int = 123, device: str = "cpu") -> tuple:
+def extract_model_outputs(
+  model: torch.nn.Module, 
+  train_loader: DataLoader, 
+  return_features: bool = False, 
+  seed: int = 123, 
+  device: str = "cpu") -> tuple:
   """Split the sample in confounded and unconfounded based on the model outputs.
   Args:
     model (Module): model to extract output from.
@@ -74,16 +79,22 @@ def extract_model_outputs(model: torch.nn.Module, train_loader: DataLoader, retu
   return is_in_cluster, is_confounded_all, labels_all
 
 
-def exp_model_outputs(device: str = "cpu", seed: int = 123, dataset: str = "DecoyMNIST") -> dict:
+def exp_model_outputs(
+    seed: int = 123, 
+    dataset: str = "DecoyMNIST",
+    variation: int = 0
+    ) -> dict:
   """Run experiment to see how model output correlate with confounder presence.
   Args:
-    device (str): device where computation occurs.
     seed (int): seed for the experiment.
     dataset (str): dataset to use for the experiment.
     metric (str): metric to use for simplicity.
   Returns:
     dict: correlation between confounder presence and model output.
   """
+  use_cuda = torch.cuda.is_available()
+  device = 'cuda' if use_cuda else 'cpu'
+
   enable_reproducibility(seed)
   model = load_lenet(device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
@@ -93,7 +104,8 @@ def exp_model_outputs(device: str = "cpu", seed: int = 123, dataset: str = "Deco
     dataset, 
     seed=seed, 
     reload=True,
-    bias_ratio=[0.99]*10
+    bias_ratio=[0.99]*10,
+    variation=variation
   )
   
   data = [train_set, val_set, test_set]

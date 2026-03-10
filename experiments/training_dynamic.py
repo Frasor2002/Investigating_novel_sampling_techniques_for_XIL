@@ -9,16 +9,22 @@ from functions.xil import compute_simplicity
 from utils.utils import enable_reproducibility
 from experiments.utils import compute_correlations
 
-def exp_train_dynamics(device: str = "cpu", seed: int = 123, dataset: str = "DecoyMNIST", metric: str= "MP") -> dict:
+def exp_train_dynamics(
+  seed: int = 123, 
+  dataset: str = "DecoyMNIST", 
+  variation: int = 0 ,
+  metric: str= "MP") -> dict:
   """Run experiment to see how training dynamics correlate with confounder presence.
   Args:
-    device (str): device where computation occurs.
     seed (int): seed for the experiment.
     dataset (str): dataset to use for the experiment.
     metric (str): metric to use for simplicity.
   Returns:
     dict: correlation between confounder presence and training dynamics.
   """
+  use_cuda = torch.cuda.is_available()
+  device = 'cuda' if use_cuda else 'cpu'
+
   enable_reproducibility(seed)
   model = load_lenet(device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
@@ -28,7 +34,8 @@ def exp_train_dynamics(device: str = "cpu", seed: int = 123, dataset: str = "Dec
     dataset, 
     seed=seed, 
     reload=True,
-    bias_ratio=[0.99]*10
+    bias_ratio=[0.99]*10,
+    variation=variation
   )
   
   data = [train_set, val_set, test_set]

@@ -21,41 +21,66 @@ BOT_LEFT = (PATCH_START, 0)
 BOT_RIGHT = (PATCH_START, PATCH_START)
 CORNERS = [TOP_LEFT, TOP_RIGHT, BOT_LEFT, BOT_RIGHT]
 
+# Variation 3 positions
 
 
-def add_confounder(x: np.ndarray, digit: int) -> tuple:
+DIGIT_TO_START = {
+  0: TOP_LEFT,
+  1: (0, PATCH_LEN),
+  2: (0, PATCH_LEN * 2),
+  3: (0, PATCH_LEN * 3),
+  4: (0, PATCH_LEN * 4),
+  5: BOT_LEFT,
+  6: (PATCH_START, PATCH_LEN),
+  7: (PATCH_START, PATCH_LEN * 2),
+  8: (PATCH_START, PATCH_LEN * 3),
+  9: (PATCH_START, PATCH_LEN * 4)
+}
+
+def add_confounder(x: np.ndarray, digit: int, variation: int = 0) -> tuple:
   """Add a 4x4 patch in a randomly chosen corner.
   Train -> shade = 255 - 25y
   Test -> shade = random.
   Args:
     x (ndarray): input img in ndarray format.
     digit (int): class label.
+    variation (int): different confounder choices.
   Return:
     tuple: confounded image.
   """
-  start_x, start_y = random.choice(CORNERS)
-  # Shade function
-  shade = 255 - 25 * digit
+  x = x.copy()
+  mask = np.zeros_like(x)
+
+  if variation == 1:
+    # Fixed confounder position
+    start_x, start_y = TOP_LEFT
+    shade = 255 - 25 * digit
+    pass
+  elif variation == 2:
+    # Confounder position depends on digit with fixed shade
+    start_x, start_y = DIGIT_TO_START[digit]
+    shade = 255
+  else:
+    start_x, start_y = random.choice(CORNERS)
+    # Shade function
+    shade = 255 - 25 * digit
   
   end_x = start_x + PATCH_LEN
   end_y = start_y + PATCH_LEN
-
-  x = x.copy()
   x[start_x:end_x, start_y: end_y] = shade
-
   # Ground-truth explaination  
-  mask = np.zeros_like(x)
   mask[start_x:end_x, start_y: end_y] = 1
 
   return x, mask
 
 
-def confound_dataset(x: np.ndarray, y: np.ndarray, bias_ratio: list) -> tuple:
+def confound_dataset(x: np.ndarray, y: np.ndarray, bias_ratio: list, variation: int) -> tuple:
   """Confound a given dataset.
   Args:
     x (ndarray): array of images.
     y (ndarray): array of labels.
     bias_ratio (float): percentage of samples that contain the spurios patch.
+    variation (int): confounder variation.
   Return:
     tuple: array of confounded images and masks.
   """
@@ -83,7 +108,7 @@ def confound_dataset(x: np.ndarray, y: np.ndarray, bias_ratio: list) -> tuple:
       possible_confounders = classes_labels[classes_labels != label] if bias_ratio[label] != 0 else classes_labels
       conf_label = np.random.choice(possible_confounders)
     
-    confounded, mask = add_confounder(img, conf_label)
+    confounded, mask = add_confounder(img, conf_label, variation)
 
     if not is_spurious:
       # Clear mask if confounder is random
@@ -166,7 +191,8 @@ def prepare_generic_data(
   save_path:str,
   val_size: float=0.2, 
   random_state: int=123,
-  bias_ratio: list=[1]*N_CLASSES
+  bias_ratio: list=[1]*N_CLASSES,
+  variation: int = 0
 ) -> None:
   """Prepare data by loading and confounding it.
   Args:
@@ -198,9 +224,21 @@ def prepare_generic_data(
   y_test = raw_test.targets.numpy()
 
   # Confound data
-  x_train_c, mask_train = confound_dataset(x_train, y_train, bias_ratio=bias_ratio)
-  x_val_c, mask_val   = confound_dataset(x_val, y_val, bias_ratio=[0]*N_CLASSES)
-  x_test_c, mask_test  = confound_dataset(x_test, y_test, bias_ratio=[0]*N_CLASSES)
+  x_train_c, mask_train = confound_dataset(
+    x_train, 
+    y_train, 
+    bias_ratio=bias_ratio, 
+    variation=variation)
+  x_val_c, mask_val   = confound_dataset(
+    x_val, 
+    y_val, 
+    bias_ratio=[0]*N_CLASSES,
+    variation=variation)
+  x_test_c, mask_test  = confound_dataset(
+    x_test, 
+    y_test, 
+    bias_ratio=[0]*N_CLASSES,
+    variation=variation)
 
   # Save prepared data
   os.makedirs(save_path, exist_ok=True)
@@ -224,6 +262,7 @@ def load_decoy(
     seed: int = 123, 
     reload: bool = False, 
     bias_ratio: list = [1]*N_CLASSES,
+    variation: int = 0
   ) -> tuple:
   """Load decoy dataset.
   Args:
@@ -239,7 +278,7 @@ def load_decoy(
 
   files_exist = os.path.exists(train_path) and os.path.exists(val_path) and os.path.exists(test_path)
   if not files_exist or reload:
-    prepare_fn(random_state=seed, bias_ratio=bias_ratio)
+    prepare_fn(random_state=seed, bias_ratio=bias_ratio, variation=variation)
 
   # Load from .npz
   train_np = np.load(train_path)

@@ -9,6 +9,7 @@ from utils.utils import enable_reproducibility
 from experiments.training_dynamic import exp_train_dynamics
 from experiments.model_output import exp_model_outputs
 from experiments.explaination_entropy import exp_explaination_entropy
+from experiments.utils import log_results, plot_results
 
 # Experiment seed
 SEED = 123
@@ -17,17 +18,17 @@ DATASET_NAMES = ["DecoyMNIST", "DecoyFashionMNIST"]
 
 # Params
 DATASET = DATASET_NAMES[0]
-
+VARIATION = 2
 	
 if __name__ == "__main__":
   use_cuda = torch.cuda.is_available()
   device = 'cuda' if use_cuda else 'cpu'
 
-  res1 = exp_train_dynamics(device, seed=SEED)
-  print(res1)
+  res1 = exp_train_dynamics(seed=SEED, dataset="DecoyMNIST", variation=VARIATION)
+  log_results(res1, "train_dynamics")
 
-  res2 = exp_model_outputs(device, seed=SEED)
-  print(res2)
+  res2 = exp_model_outputs(seed=SEED,dataset="DecoyMNIST", variation=VARIATION)
+  log_results(res2, "model_output")
 
-  res3 = exp_explaination_entropy(device, seed=SEED)
-  print(res3)
+  res3 = exp_explaination_entropy(seed=SEED, dataset="DecoyMNIST", variation=VARIATION)
+  log_results(res3, "explaination_entropy")
