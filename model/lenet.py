@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from typing import Union
 
 class ModernLeNet(nn.Module):
   """Modern reintepretation of LeNet."""
@@ -33,16 +34,51 @@ class ModernLeNet(nn.Module):
     x = self.dropout2(x)
     x = self.fc2(x)
     return x # F.log_softmax(x, dim=1)
+  
 
 
-def load_lenet(device: str = "cuda") -> ModernLeNet:
+class LeNet(torch.nn.Module):
+  """Traditional LeNet architecture."""
+
+  def __init__(self):
+    super(LeNet, self).__init__()
+    # 1 input image channel (black & white), 6 output channels, 5x5 square convolution
+    self.conv1 = torch.nn.Conv2d(1, 6, 5)
+    self.conv2 = torch.nn.Conv2d(6, 16, 3)
+    self.fc1 = torch.nn.Linear(16 * 5 * 5, 120)  # 400 features from convolutions
+    self.fc2 = torch.nn.Linear(120, 84)
+    self.fc3 = torch.nn.Linear(84, 10)
+
+  def forward(self, x: torch.Tensor, return_features: bool = False):
+    x = F.max_pool2d(F.relu(self.conv1(x)), (2, 2))
+    x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+    x = torch.flatten(x, 1)
+    x = F.relu(self.fc1(x))
+    x = F.relu(self.fc2(x))
+
+    if return_features:
+      return x
+
+    x = self.fc3(x)
+    return x
+
+
+def load_lenet(variant: str= "classic", device: str = "cuda") -> Union[ModernLeNet,LeNet]:
   """Load LeNet model.
   Args:
+    variant (str): can be 'classic' or 'modern' variant.
     device (str): device where model is loaded.
   Returns:
-    ModernLeNet: model created.
+    Union[LeNet,ModernLeNet]: model created.
   
   """
-  model = ModernLeNet()
+  if variant not in ['classic', 'modern']:
+    raise ValueError("Wrong LeNet variant name.")
+  
+  if variant == 'classic':
+    model = LeNet()
+  else:
+    model = ModernLeNet()
+
   model = model.to(device)
   return model

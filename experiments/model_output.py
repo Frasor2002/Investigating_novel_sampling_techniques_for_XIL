@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data.dataloader import DataLoader
 import numpy as np
-from model.lenet import load_lenet
+from model.model import load_model
 from dataset.dataset import load_data, create_dataloaders
 from functions.optimizer import load_optimizer
 from functions.loss import load_loss_fun
@@ -10,7 +10,46 @@ from functions.xil import compute_simplicity
 from utils.utils import enable_reproducibility
 from experiments.utils import compute_correlations
 from sklearn.decomposition import PCA
+from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+
+def visualize_pca_clusters(reduced_class: np.ndarray, cluster_labels: np.ndarray, 
+                           class_confounded: np.ndarray, class_id: int):
+    """
+    Visualizes the PCA-reduced features, colored by predicted cluster 
+    and shaped by true confounder presence.
+    """
+    plt.figure(figsize=(8, 6))
+
+    # Combinations of (Cluster 0/1) and (Confounded True/False)
+    # Cluster 0 - Unconfounded
+    mask_c0_u = (cluster_labels == 0) & (class_confounded == 0)
+    plt.scatter(reduced_class[mask_c0_u, 0], reduced_class[mask_c0_u, 1], 
+                c='blue', marker='o', label='Cluster 0 (Unconfounded True)', alpha=0.6)
+    
+    # Cluster 0 - Confounded
+    mask_c0_c = (cluster_labels == 0) & (class_confounded == 1)
+    plt.scatter(reduced_class[mask_c0_c, 0], reduced_class[mask_c0_c, 1], 
+                c='blue', marker='x', label='Cluster 0 (Confounded True)', alpha=0.8)
+
+    # Cluster 1 - Unconfounded
+    mask_c1_u = (cluster_labels == 1) & (class_confounded == 0)
+    plt.scatter(reduced_class[mask_c1_u, 0], reduced_class[mask_c1_u, 1], 
+                c='red', marker='o', label='Cluster 1 (Unconfounded True)', alpha=0.6)
+    
+    # Cluster 1 - Confounded
+    mask_c1_c = (cluster_labels == 1) & (class_confounded == 1)
+    plt.scatter(reduced_class[mask_c1_c, 0], reduced_class[mask_c1_c, 1], 
+                c='red', marker='x', label='Cluster 1 (Confounded True)', alpha=0.8)
+
+    plt.title(f'Latent Space Clustering for Class {class_id}')
+    plt.xlabel('Principal Component 1')
+    plt.ylabel('Principal Component 2')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.show()
+    
 
 
 def extract_model_outputs(
@@ -63,24 +102,30 @@ def extract_model_outputs(
     pca_class = PCA(n_components=2)
     reduced_class = pca_class.fit_transform(class_outputs)
     
-    # Find the two clusters with K-Means
-    kmeans = KMeans(n_clusters=2, random_state=seed)
-    cluster_labels = kmeans.fit_predict(reduced_class)
+    # Find the two clusters with GM
+    gmm = GaussianMixture(n_components=2, random_state=seed)
+    cluster_labels = gmm.fit_predict(reduced_class)
+    #kmeans = KMeans(n_clusters=2, random_state=seed)
+    #cluster_labels = kmeans.fit_predict(reduced_class)
 
     # Make sure that 1 are confounded and 0 unconfounded by checking the majority
     mean_confounded_c0 = class_confounded[cluster_labels == 0].mean() if sum(cluster_labels == 0) > 0 else 0
     mean_confounded_c1 = class_confounded[cluster_labels == 1].mean() if sum(cluster_labels == 1) > 0 else 0
         
     if mean_confounded_c0 > mean_confounded_c1:
-      cluster_labels = 1 - cluster_labels
+      cluster_labels = np.subtract(1, cluster_labels)
     
     is_in_cluster[class_mask] = cluster_labels
+
+    #visualize_pca_clusters(reduced_class, cluster_labels, class_confounded, c)
   
   return is_in_cluster, is_confounded_all, labels_all
 
 
 def exp_model_outputs(
     seed: int = 123, 
+    model_name :str = "LeNet",
+    model_variant: str = "modern",
     dataset: str = "DecoyMNIST",
     variation: int = 0
     ) -> dict:
@@ -96,7 +141,10 @@ def exp_model_outputs(
   device = 'cuda' if use_cuda else 'cpu'
 
   enable_reproducibility(seed)
-  model = load_lenet(device)
+  if model_name == "LeNet":
+    model = load_model(model_name, device=device, variant=model_variant)
+  else:
+    model = load_model(model_name, device=device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
   loss = load_loss_fun("CrossEntropy")
 
@@ -115,8 +163,6 @@ def exp_model_outputs(
 
   # After a few epochs of training the samples should be separable
 
-  # Try with two epochs but find the best ones
-
   _, _ = train_model(
     model, 
     train_loader, 
@@ -130,7 +176,7 @@ def exp_model_outputs(
   separation_list, is_confounded, labels = extract_model_outputs(
     model, 
     train_loader, 
-    return_features=False, 
+    return_features=True, 
     seed=seed,
     device=device
   )

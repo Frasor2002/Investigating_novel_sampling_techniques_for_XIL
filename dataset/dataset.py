@@ -6,21 +6,38 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-def visualize_5_samples(dataset: Any, label: int) -> None:
-  """Visualization helper to see 5 samples with a given label.
+def visualize_k_samples(dataset: Any, label: int, k: int = 5) -> None:
+  """Visualization helper to see k samples with a given label.
   Args:
     dataset (Any): dataset to visualize.
     label (int): label of which samples are shown.
+    k (int): number of images to show. Defaults to 5.
   """
-  _, axes = plt.subplots(1, 5, figsize=(5*5, 5*1))
+  fig, axes = plt.subplots(1, k, figsize=(4 * k, 4))
+  
+  if k == 1:
+    axes = [axes]
 
-  tr_indices = np.where(dataset.y == label)[0]
-  for a, i in enumerate(np.random.permutation(tr_indices)[:5]):
+  tr_indices = np.where(dataset.y == label)[0]  
+  k_actual = min(k, len(tr_indices))
+  selected_indices = np.random.permutation(tr_indices)[:k_actual]
+
+  for a, i in enumerate(selected_indices):
     _, x, y, _ = dataset[i]
+    
     axes[a].imshow(x.reshape(28, 28), cmap='gray')
     axes[a].set_xticks([])
     axes[a].set_yticks([])
-    #axes[a].set_xlabel(f'label: {y}')
+    
+    for spine in axes[a].spines.values():
+      spine.set_edgecolor('gray')
+      spine.set_linewidth(0.5)
+
+  for a in range(k_actual, k):
+    axes[a].axis('off')
+
+  plt.tight_layout()
+
 
 
 def load_data(name: str, **kwargs: Any):

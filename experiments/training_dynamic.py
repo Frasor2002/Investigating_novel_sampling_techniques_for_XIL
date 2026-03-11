@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from model.lenet import load_lenet
+from model.model import load_model
 from dataset.dataset import load_data, create_dataloaders
 from functions.optimizer import load_optimizer
 from functions.loss import load_loss_fun
@@ -11,6 +11,8 @@ from experiments.utils import compute_correlations
 
 def exp_train_dynamics(
   seed: int = 123, 
+  model_name : str = "LeNet",
+  model_variant: str = "modern",
   dataset: str = "DecoyMNIST", 
   variation: int = 0 ,
   metric: str= "MP") -> dict:
@@ -26,7 +28,10 @@ def exp_train_dynamics(
   device = 'cuda' if use_cuda else 'cpu'
 
   enable_reproducibility(seed)
-  model = load_lenet(device)
+  if model_name == "LeNet":
+    model = load_model(model_name, device=device, variant=model_variant)
+  else:
+    model = load_model(model_name, device=device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
   loss = load_loss_fun("CrossEntropy")
 
@@ -48,12 +53,12 @@ def exp_train_dynamics(
     train_loader, 
     optim, 
     loss, 
-    n_epochs=20, 
+    n_epochs=10, 
     eval_loader=val_loader, 
     device=device
   )
-  #loss, acc = eval_model(model, test_loader, loss,  device)
-  #print("="*20,f"Test set Loss:{loss:.2f} | Acc:{acc:.2f}.","="*20)
+  loss, acc = eval_model(model, test_loader, loss,  device)
+  print("="*20,f"Test set Loss:{loss:.2f} | Acc:{acc:.2f}.","="*20)
   
   simplicity = compute_simplicity(dyn, metric)
 

@@ -10,7 +10,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 def visualize_k_expl(all_attr: torch.Tensor, all_imgs: torch.Tensor, dataset: Any, target_label:int, k: int=3):
-  """Visualizer helper to plot 5 attributions given a label.
+  """Visualizer helper to plot k attributions given a label.
   Args:
     all_attr (Tensor): all attributions.
     all_imgs (Tensor): all imgs to plot.

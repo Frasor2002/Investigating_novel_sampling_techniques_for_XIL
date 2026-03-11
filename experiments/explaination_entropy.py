@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from model.lenet import load_lenet
+from model.model import load_model
 from dataset.dataset import load_data, create_dataloaders
 from functions.optimizer import load_optimizer
 from functions.loss import load_loss_fun
@@ -36,6 +36,8 @@ def compute_exp_entropy(attrs: torch.Tensor):
 
 def exp_explaination_entropy(
     seed: int = 123, 
+    model_name: str = "LeNet",
+    model_variant: str = "modern",
     dataset: str = "DecoyMNIST",
     variation: int = 0) -> dict:
   """Run experiment to see how explaination entropy correlate with confounder presence.
@@ -50,7 +52,10 @@ def exp_explaination_entropy(
   device = 'cuda' if use_cuda else 'cpu'
 
   enable_reproducibility(seed)
-  model = load_lenet(device)
+  if model_name == "LeNet":
+    model = load_model(model_name, device=device, variant=model_variant)
+  else:
+    model = load_model(model_name, device=device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
   loss = load_loss_fun("CrossEntropy")
 
