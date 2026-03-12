@@ -8,7 +8,7 @@
 #SBATCH --job-name=novel_sampling_xil
 #SBATCH --output=./cluster/outputs/output.out
 #SBATCH --error=./cluster/outputs/error.err
-#SBATCH --partition edu-medium
+#SBATCH --partition edu-long
 #SBATCH -t 0:30:0
 
 # Activate conda environment

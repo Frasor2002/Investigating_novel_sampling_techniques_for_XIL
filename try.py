@@ -4,7 +4,7 @@ from functions.xil import random_sampling, simplicity_sampling
 SEED = 123
 MODEL = "LeNet"
 MOD_VARIANT = "modern"
-DATASET = "DecoyMNIST"
+DATASET = "DecoyFashionMNIST"
 VARIANT = 2
 SAMPLING_STRAT = simplicity_sampling
 BUDGET = 30000
