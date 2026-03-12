@@ -11,19 +11,12 @@ from tqdm import tqdm
 import random
 import numpy as np
 import logging
+import os
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LOG_DIR = os.path.join(BASE_DIR, "log", "xil")
 
-# Configure logging
-logging.basicConfig(
-  level=logging.INFO,
-  format='%(asctime)s [%(levelname)s] %(message)s',
-  handlers=[
-    #logging.FileHandler("xil_progress.log"),  # Saves to this file
-    logging.StreamHandler()                  # Also prints to console
-  ]
-)
-logger = logging.getLogger(__name__)
-
+# Name of checkpoint to reset the model
 RESET_CHECKPOINT="reset_model"
 
 class XIL_Dataset(Dataset):
@@ -52,8 +45,6 @@ class XIL_Dataset(Dataset):
     return getattr(self.dataset, name)
 
 
-def reset_model(model, device):
-  load_checkpoint(RESET_CHECKPOINT, model, device)
 
 
 def xil_loop(
@@ -67,6 +58,7 @@ def xil_loop(
     step_size:int=1,
     starting_query:int=0,
     rrr_reg_rate:float=1, 
+    log_filename: str= "xil_log",
     device:str="cpu") -> int:
   """XIL loop to deconfound a model.
   Args:
@@ -77,14 +69,33 @@ def xil_loop(
     test_loader(DataLoader): test DataLoader for evaluation.
     device (str): device where training happens.
   """
+  # logging configuration
+  os.makedirs(LOG_DIR, exist_ok=True)
+  logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+      logging.FileHandler(os.path.join(LOG_DIR,f"{log_filename}.log")),
+      logging.StreamHandler()
+    ]
+  )
+  logger = logging.getLogger(__name__)
+
   xil_train_dataset = XIL_Dataset(train_data)
 
   all_positional_ids = list(range(len(train_data)))
   explained_ids = []
 
   if starting_query > 0:
+
     logger.info(f"Starting XIL loop with {starting_query} initial queries.")
-    chosen_positions = sampling_strategy(all_positional_ids, training_dynamics=tr_dynamics, dataset=train_data, k=starting_query)
+
+    chosen_positions = sampling_strategy(
+      all_positional_ids, 
+      training_dynamics=tr_dynamics, 
+      dataset=train_data, 
+      k=starting_query)
+    
     for pos in chosen_positions:
       explained_ids.append(pos)
       xil_train_dataset.activate_explanation(pos)
@@ -99,7 +110,7 @@ def xil_loop(
       logger.warning("Full explanatory supervision reached earlier than budget.")
       break
 
-    # Step size must not exceed budget or budget
+    # Step size must not exceed budget
     current_step = min(step_size, budget - query_count, len(sampling_pool))
 
     chosen_positions = sampling_strategy(sampling_pool, training_dynamics=tr_dynamics, dataset=train_data, k=current_step)
@@ -112,8 +123,9 @@ def xil_loop(
     loop.set_postfix_str(f"{len(explained_ids)}/{budget} explained")
     query_count += len(chosen_positions)
     loop.update(len(chosen_positions))
-
-    reset_model(model, device)
+    
+    # Reset model and than retrain
+    load_checkpoint(RESET_CHECKPOINT, model, device)
     # Init optimizer and losses
     optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
     train_loss = load_loss_fun("RRR", reg_rate=rrr_reg_rate, rr_clip=2) # RRR
