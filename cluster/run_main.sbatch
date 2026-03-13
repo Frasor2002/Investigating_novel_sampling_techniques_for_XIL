@@ -9,7 +9,7 @@
 #SBATCH --output=./cluster/outputs/output.out
 #SBATCH --error=./cluster/outputs/error.err
 #SBATCH --partition edu-long
-#SBATCH -t 30:00:0
+#SBATCH -t 20:00:0
 
 # Activate conda environment
 source ~/.bashrc
