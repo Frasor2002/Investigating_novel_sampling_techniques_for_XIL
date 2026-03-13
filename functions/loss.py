@@ -28,7 +28,7 @@ class LossWrapper(Module):
 
 
 class RRR(Module):
-  def __init__(self, reg_rate:float=1, base_loss:Callable=CrossEntropyLoss(), rr_clip:Optional[float]=2.0) -> None:
+  def __init__(self, reg_rate:float=1, base_loss:Callable=CrossEntropyLoss()) -> None:
     """Initialize Right for Right Reasons.
     Args:
       reg_rate (float): regularization rate.
@@ -38,7 +38,6 @@ class RRR(Module):
     super().__init__()
     self.reg_rate = reg_rate
     self.base_loss = base_loss
-    self.rr_clip = rr_clip
   
   def forward(self, logits:torch.Tensor, targets: torch.Tensor, inputs: torch.Tensor, masks: torch.Tensor) -> torch.Tensor:
     """Compute RRR loss with mask penalty.
@@ -68,9 +67,6 @@ class RRR(Module):
     )[0]
     rr_penalty = torch.mul(masks, grads) ** 2
     rr_loss = torch.sum(rr_penalty) * self.reg_rate
-
-    if self.rr_clip is not None:
-      rr_loss = torch.clamp(rr_loss, max=self.rr_clip)
 
     #print("ra:",ra_loss.item())
     #print("rr:",rr_loss.item())

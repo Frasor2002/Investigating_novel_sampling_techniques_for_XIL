@@ -12,6 +12,7 @@ import random
 import numpy as np
 import logging
 import os
+import matplotlib.pyplot as plt
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(BASE_DIR, "log", "xil")
@@ -101,25 +102,6 @@ def xil_loop(
       training_dynamics=tr_dynamics, 
       dataset=train_data, 
       k=starting_query)
-
-    # SANITY CHECK
-    chosen_labels = []
-    from collections import Counter
-    for pos in chosen_positions:
-      # Unpack your dataset tuple (unique_id, x, y, mask)
-      _, _, y, _ = train_data[pos] 
-      # Handle both PyTorch tensors and standard ints
-      label = y.item() if isinstance(y, torch.Tensor) else y
-      chosen_labels.append(label)
-        
-    label_counts = Counter(chosen_labels)
-    
-    # Print it out nicely in your logger
-    logger.info(f"--- Class Distribution for this {len(chosen_positions)} sample batch ---")
-    for label, count in sorted(label_counts.items()):
-      logger.info(f"  Class {label}: {count} samples")
-    logger.info("---------------------------------------------------------")
-    # SANITY CHECK
     
     for pos in chosen_positions:
       explained_ids.append(pos)
@@ -140,6 +122,21 @@ def xil_loop(
 
     chosen_positions = sampling_strategy(sampling_pool, training_dynamics=tr_dynamics, dataset=train_data, k=current_step)
     
+    # SANITY CHECK
+    #chosen_labels = []
+    #from collections import Counter
+    #for pos in chosen_positions:
+    #  _, _, y, _ = train_data[pos] 
+    #  label = y.item() if isinstance(y, torch.Tensor) else y
+    #  chosen_labels.append(label)
+        
+    #label_counts = Counter(chosen_labels)
+    #logger.info(f"--- Class Distribution for this {len(chosen_positions)} sample batch ---")
+    #for label, count in sorted(label_counts.items()):
+    #  logger.info(f"  Class {label}: {count} samples")
+    #logger.info("---------------------------------------------------------")
+    # SANITY CHECK
+
     # Process the batch
     for pos in chosen_positions:
       explained_ids.append(pos)
@@ -153,7 +150,7 @@ def xil_loop(
     load_checkpoint(RESET_CHECKPOINT, model, device)
     # Init optimizer and losses
     optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
-    train_loss = load_loss_fun("RRR", reg_rate=rrr_reg_rate, rr_clip=2) # RRR
+    train_loss = load_loss_fun("RRR", reg_rate=rrr_reg_rate, rr_clip=None) # RRR
     eval_loss = load_loss_fun("CrossEntropy")
     train_loader = DataLoader(xil_train_dataset, batch_size=32)
 
@@ -193,14 +190,41 @@ def simplicity_sampling(sampling_pool:list,training_dynamics: dict, dataset:Any,
   """
   # sampling_pool uses positional ids, i need to return from ids of sample to positional
   simplicity = compute_simplicity(training_dynamics, metric = "MP") # ids of samples
-  # Sort the sampling pool by simplicity
-  sorted_pool = sorted(
-    sampling_pool, 
-    key=lambda internal_idx: simplicity[dataset.indices[internal_idx]], 
-    reverse=True
-  )
 
-  chosen = sorted_pool[:k]
+  class_pools = {}
+  for pos in sampling_pool:
+    _, _, y, _ = dataset[pos]
+    label = y.item() if isinstance(y, torch.Tensor) else y
+    
+    if label not in class_pools:
+      class_pools[label] = []
+    class_pools[label].append(pos)
+
+  num_classes = len(class_pools)
+  k_per_class = k // num_classes
+  remainder = k % num_classes
+
+  chosen = []
+  for label, pool in class_pools.items():
+    sorted_class_pool = sorted(
+      pool, 
+      key=lambda internal_idx: simplicity[dataset.indices[internal_idx]], 
+      reverse=True
+    )    
+    alloc = k_per_class + (1 if remainder > 0 else 0)
+    if remainder > 0:
+      remainder -= 1
+        
+    chosen.extend(sorted_class_pool[:alloc])
+
+  # Sort the sampling pool by simplicity
+  #sorted_pool = sorted(
+  #  sampling_pool, 
+  #  key=lambda internal_idx: simplicity[dataset.indices[internal_idx]], 
+  #  reverse=True
+  #)
+
+  #chosen = sorted_pool[:k]
 
   return chosen
 
@@ -237,3 +261,18 @@ def compute_simplicity(training_dynamics: dict, metric: str = "MP") -> dict:
         simplicity[id] = 0.0
 
   return simplicity
+
+
+def plot_xil_log(log_random: dict, log_simplicity:dict, dataset_name:str, filename: str) -> None:
+  plt.figure(figsize=(10, 6))
+  plt.plot(log_simplicity['epoch'], log_simplicity['accuracy'], marker='', linestyle='-', color='C1', label="Simplicity sampling")
+  plt.plot(log_random['epoch'], log_random['accuracy'], marker='', linestyle='-', color='mediumturquoise', label="Random sampling")
+  plt.xticks(fontsize=14)
+  plt.yticks(fontsize=14)
+  plt.title(f'Sampling comparison on {dataset_name}', fontsize=20)
+  plt.xlabel('XIL Iterations', fontsize=15)
+  plt.ylabel('Accuracy', fontsize=15)
+  plt.tick_params(axis='both', which='major', labelsize=14)
+  plt.grid(True)
+  plt.legend(fontsize=15)
+  plt.savefig(f"{filename}.pdf")
