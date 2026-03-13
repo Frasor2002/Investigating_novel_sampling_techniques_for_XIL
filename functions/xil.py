@@ -23,11 +23,11 @@ class XIL_Dataset(Dataset):
   def __init__(self, dataset: Any) -> None:
     super().__init__()
     self.dataset = dataset
-    self.requested_ids = []
+    self.requested_ids = set()
   
   def activate_explanation(self, pos):
     sample_index, _, _, _ = self.dataset[pos]
-    self.requested_ids.append(sample_index)
+    self.requested_ids.add(sample_index)
   
   def __getitem__(self, idx): 
     unique_id, x, y, real_mask = self.dataset[idx]
@@ -59,7 +59,7 @@ def xil_loop(
     starting_query:int=0,
     rrr_reg_rate:float=1, 
     log_filename: str= "xil_log",
-    device:str="cpu") -> int:
+    device:str="cpu") -> dict:
   """XIL loop to deconfound a model.
   Args:
     train_data (Any): traning dataset.
@@ -69,6 +69,12 @@ def xil_loop(
     test_loader(DataLoader): test DataLoader for evaluation.
     device (str): device where training happens.
   """
+
+  log = {
+    "accuracy": [],
+    "query": []
+  }
+
   # logging configuration
   os.makedirs(LOG_DIR, exist_ok=True)
   logging.basicConfig(
@@ -95,6 +101,25 @@ def xil_loop(
       training_dynamics=tr_dynamics, 
       dataset=train_data, 
       k=starting_query)
+
+    # SANITY CHECK
+    chosen_labels = []
+    from collections import Counter
+    for pos in chosen_positions:
+      # Unpack your dataset tuple (unique_id, x, y, mask)
+      _, _, y, _ = train_data[pos] 
+      # Handle both PyTorch tensors and standard ints
+      label = y.item() if isinstance(y, torch.Tensor) else y
+      chosen_labels.append(label)
+        
+    label_counts = Counter(chosen_labels)
+    
+    # Print it out nicely in your logger
+    logger.info(f"--- Class Distribution for this {len(chosen_positions)} sample batch ---")
+    for label, count in sorted(label_counts.items()):
+      logger.info(f"  Class {label}: {count} samples")
+    logger.info("---------------------------------------------------------")
+    # SANITY CHECK
     
     for pos in chosen_positions:
       explained_ids.append(pos)
@@ -135,12 +160,15 @@ def xil_loop(
     _, _ = train_model(model, train_loader, optim, train_loss, 10, val_loader, device=device)
     loss, acc = eval_model(model, test_loader, eval_loss, device)
     logger.info(f"Iteration Progress: {query_count}/{budget} samples explained. Performance acc= {acc}, loss={loss}")
+    
+    log['accuracy'].append(acc)
+    log['query'].append(query_count)
 
     #all_attr, all_imgs = explain_dataset(val_loader, model, device)
     #exp_mse = evaluate_explainations(all_attr, val_loader.dataset.masks)
     #print(f"Explaination MSE: {exp_mse:.2f}")
 
-  return query_count
+  return log
 
 def random_sampling(sampling_pool:list, k:int, **kwargs) -> list:
   """Baseline sampling strategy that picks k random samples from the pool.
@@ -172,7 +200,7 @@ def simplicity_sampling(sampling_pool:list,training_dynamics: dict, dataset:Any,
     reverse=True
   )
 
-  chosen = sorted_pool[:k] # these are not positional and require conversion!
+  chosen = sorted_pool[:k]
 
   return chosen
 
@@ -195,7 +223,7 @@ def compute_simplicity(training_dynamics: dict, metric: str = "MP") -> dict:
 
   for id, epoch_metrics in training_dynamics.items():
     if metric == "MP":
-      simplicity[id] = np.mean([metric["confidence"] for metric in epoch_metrics])
+      simplicity[id] = np.mean([m["confidence"] for m in epoch_metrics])
     elif metric == "EC":  
       n_epochs = len(epoch_metrics)
       f = None # First correct epoch

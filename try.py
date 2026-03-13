@@ -4,13 +4,13 @@ from functions.xil import random_sampling, simplicity_sampling
 SEED = 123
 MODEL = "LeNet"
 MOD_VARIANT = "modern"
-DATASET = "DecoyFashionMNIST"
+DATASET = "DecoyMNIST"
 VARIANT = 2
 SAMPLING_STRAT = simplicity_sampling
-BUDGET = 30000
-STEP = 100
+BUDGET = 48000
+STEP = 1000
 INITIAL_QUERY = 0
-LOG_NAME = f"ss_{MODEL}_{MOD_VARIANT}_{DATASET}"
+LOG_NAME = f"rs_{MODEL}_{MOD_VARIANT}_{DATASET}"
 
 
 exp_xil_loop(
