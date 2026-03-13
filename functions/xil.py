@@ -150,7 +150,7 @@ def xil_loop(
     load_checkpoint(RESET_CHECKPOINT, model, device)
     # Init optimizer and losses
     optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
-    train_loss = load_loss_fun("RRR", reg_rate=rrr_reg_rate, rr_clip=None) # RRR
+    train_loss = load_loss_fun("RRR", reg_rate=rrr_reg_rate) # RRR
     eval_loss = load_loss_fun("CrossEntropy")
     train_loader = DataLoader(xil_train_dataset, batch_size=32)
 
