@@ -21,6 +21,7 @@ def exp_xil_loop(
   budget:int=1000,
   step:int=1,
   initial_query:int=0,
+  rr_reg: float=1,
   log_filename:str="xil_log"
 ):
   use_cuda = torch.cuda.is_available()
@@ -63,7 +64,7 @@ def exp_xil_loop(
   loss, acc = eval_model(model, test_loader, loss,  device)
   print("="*20,f"Test set Loss:{loss:.2f} | Acc:{acc:.2f}.","="*20)
 
-  rr_reg = 1 if dataset == "DecoyMNIST" else 1e-3
+  #rr_reg = 1 if dataset == "DecoyMNIST" else 1e-3
 
   # Run XIL loop
   query = xil_loop(
