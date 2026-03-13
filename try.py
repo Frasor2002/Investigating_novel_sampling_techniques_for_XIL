@@ -37,7 +37,7 @@ exp_xil_loop(
     budget=BUDGET,
     step=STEP,
     initial_query=INITIAL_QUERY,
-    rr_reg=1,
+    rr_reg=1e-1,
     log_filename="rs_mnist")
 
 if False:
