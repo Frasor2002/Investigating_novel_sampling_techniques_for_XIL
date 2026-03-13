@@ -7,14 +7,14 @@ MOD_VARIANT = "modern"
 DATASET1 = "DecoyMNIST"
 DATASET2 = "DecoyFashionMNIST"
 VARIANT = 2
-BUDGET = 300
-STEP = 10
+BUDGET = 2000
+STEP = 100
 INITIAL_QUERY = 0
 
 # MNIST
 RR_REG_SIM = 1e-1
 # Simplicity
-"""
+
 exp_xil_loop(
   seed=SEED,
   model_name=MODEL,
@@ -26,8 +26,8 @@ exp_xil_loop(
   step=STEP,
   initial_query=INITIAL_QUERY,
   rr_reg=RR_REG_SIM,
-  log_filename="ss_mnist")
-"""
+  log_filename="simplicity_mnist")
+
 exp_xil_loop(
     seed=SEED,
     model_name=MODEL,
@@ -39,7 +39,7 @@ exp_xil_loop(
     step=STEP,
     initial_query=INITIAL_QUERY,
     rr_reg=RR_REG_SIM,
-    log_filename="rs_mnist")
+    log_filename="random_mnist")
 
 if False:
   # FMNIST
