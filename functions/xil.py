@@ -191,40 +191,14 @@ def simplicity_sampling(sampling_pool:list,training_dynamics: dict, dataset:Any,
   # sampling_pool uses positional ids, i need to return from ids of sample to positional
   simplicity = compute_simplicity(training_dynamics, metric = "MP") # ids of samples
 
-  class_pools = {}
-  for pos in sampling_pool:
-    _, _, y, _ = dataset[pos]
-    label = y.item() if isinstance(y, torch.Tensor) else y
-    
-    if label not in class_pools:
-      class_pools[label] = []
-    class_pools[label].append(pos)
-
-  num_classes = len(class_pools)
-  k_per_class = k // num_classes
-  remainder = k % num_classes
-
-  chosen = []
-  for label, pool in class_pools.items():
-    sorted_class_pool = sorted(
-      pool, 
-      key=lambda internal_idx: simplicity[dataset.indices[internal_idx]], 
-      reverse=True
-    )    
-    alloc = k_per_class + (1 if remainder > 0 else 0)
-    if remainder > 0:
-      remainder -= 1
-        
-    chosen.extend(sorted_class_pool[:alloc])
-
   # Sort the sampling pool by simplicity
-  #sorted_pool = sorted(
-  #  sampling_pool, 
-  #  key=lambda internal_idx: simplicity[dataset.indices[internal_idx]], 
-  #  reverse=True
-  #)
+  sorted_pool = sorted(
+    sampling_pool, 
+    key=lambda internal_idx: simplicity[dataset.indices[internal_idx]], 
+    reverse=True
+  )
 
-  #chosen = sorted_pool[:k]
+  chosen = sorted_pool[:k]
 
   return chosen
 
