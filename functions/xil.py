@@ -13,14 +13,54 @@ import numpy as np
 import logging
 import os
 import matplotlib.pyplot as plt
+from collections import Counter
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(BASE_DIR, "log", "xil")
+
+def create_logger(log_filename: str) -> logging.Logger:
+  """Configures and returns a logger for the XIL loop."""
+  os.makedirs(LOG_DIR, exist_ok=True)
+  logger = logging.getLogger(__name__)
+    
+  # Clear existing handlers to avoid duplicate logs if run multiple times
+  if logger.hasHandlers():
+    logger.handlers.clear()
+        
+  logger.setLevel(logging.INFO)
+  formatter = logging.Formatter('%(message)s')
+    
+  file_handler = logging.FileHandler(os.path.join(LOG_DIR, f"{log_filename}.log"))
+  file_handler.setFormatter(formatter)
+    
+  stream_handler = logging.StreamHandler()
+  stream_handler.setFormatter(formatter)
+    
+  logger.addHandler(file_handler)
+  logger.addHandler(stream_handler)
+    
+  return logger
+
+def log_sample_distribution(chosen_positions, train_data, logger):
+  chosen_labels = []
+  for pos in chosen_positions:
+    _, _, y, _ = train_data[pos] 
+    label = y.item() if isinstance(y, torch.Tensor) else y
+    chosen_labels.append(label)
+        
+  label_counts = Counter(chosen_labels)
+  logger.info(f"--- Class distribution for {len(chosen_positions)} samples ---")
+  for label, count in sorted(label_counts.items()):
+    logger.info(f"  Class {label}: {count} samples")
+  logger.info("---------------------------------------------------------")
+  return dict(label_counts)
+
 
 # Name of checkpoint to reset the model
 RESET_CHECKPOINT="reset_model"
 
 class XIL_Dataset(Dataset):
+  """Dataset wrapper to enable and disable explanation masks."""
   def __init__(self, dataset: Any) -> None:
     super().__init__()
     self.dataset = dataset
@@ -46,71 +86,69 @@ class XIL_Dataset(Dataset):
     return getattr(self.dataset, name)
 
 
-
-
 def xil_loop(
-    train_data: Any, 
-    model: nn.Module, 
-    sampling_strategy: Callable,
-    budget: int, 
-    val_loader:DataLoader, 
-    test_loader: DataLoader,
-    tr_dynamics:Optional[dict]=None,
-    step_size:int=1,
-    starting_query:int=0,
-    rrr_reg_rate:float=1, 
-    log_filename: str= "xil_log",
-    device:str="cpu") -> dict:
+  train_data: Any, 
+  model: nn.Module, 
+  sampling_strategy: str,
+  budget: int, 
+  val_loader:DataLoader, 
+  test_loader: DataLoader,
+  tr_dynamics:Optional[dict]=None,
+  step_size:int=1,
+  starting_query:int=0,
+  rrr_reg_rate:float=1, 
+  log_filename: str= "xil_log",
+  device:str="cpu") -> dict:
   """XIL loop to deconfound a model.
   Args:
     train_data (Any): traning dataset.
     model (Module): model that needs to be deconfounded.
-    sampling_strategy (Callable): sampling strategy.
+    sampling_strategy (str): sampling strategy.
     budget (int): number of queries to do.
-    test_loader(DataLoader): test DataLoader for evaluation.
+    val_loader(DataLoader): test DataLoader for validation.
+    test_loader (DataLoader): test DataLoader for evaluation.
+    tr_dynamics (Optional[dict]): training dynamics for simplicity sampling.
+    step_size(int): batch of samples to explain for each iteration.
+    starting_query(int): number of samples to explain when starting.
+    rrr_reg_rate(float): regularization parameter for rr term in the loss.
+    log_filename(str): name for the xil loop log file.
     device (str): device where training happens.
   """
-
   log = {
     "accuracy": [],
-    "query": []
+    "loss": [],
+    "query": [],
+    "exp_penalty": []
   }
-
-  # logging configuration
-  os.makedirs(LOG_DIR, exist_ok=True)
-  logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[
-      logging.FileHandler(os.path.join(LOG_DIR,f"{log_filename}.log")),
-      logging.StreamHandler()
-    ]
-  )
-  logger = logging.getLogger(__name__)
-
+  
+  logger = create_logger(log_filename)
   xil_train_dataset = XIL_Dataset(train_data)
-
   all_positional_ids = list(range(len(train_data)))
   explained_ids = []
 
+  if tr_dynamics: simplicity = compute_simplicity(tr_dynamics, metric = "MP") # ids of samples
+
+  # Skip a certain amount of iterations
   if starting_query > 0:
-
     logger.info(f"Starting XIL loop with {starting_query} initial queries.")
-
-    chosen_positions = sampling_strategy(
-      all_positional_ids, 
-      training_dynamics=tr_dynamics, 
-      dataset=train_data, 
-      k=starting_query)
-    
+    chosen_positions = xil_sampling(
+      strategy=sampling_strategy,
+      sampling_pool=all_positional_ids,
+      k=starting_query,
+      simplicity=simplicity,
+      dataset=train_data
+    )
+    # Update explained samples
     for pos in chosen_positions:
       explained_ids.append(pos)
       xil_train_dataset.activate_explanation(pos)
 
+  # Start loop
   query_count = len(explained_ids)
-  loop = tqdm(range(budget),initial=starting_query, desc="XIL Loop")
+  loop = tqdm(total=budget,initial=starting_query, desc="XIL Loop")
 
-  while query_count in loop:
+  exp_penalty = 1
+  while query_count < budget or exp_penalty == 0:
 
     sampling_pool = list(set(all_positional_ids) - set(explained_ids))
     if len(sampling_pool) == 0:
@@ -119,25 +157,17 @@ def xil_loop(
 
     # Step size must not exceed budget
     current_step = min(step_size, budget - query_count, len(sampling_pool))
+    chosen_positions = xil_sampling(
+      strategy=sampling_strategy,
+      sampling_pool=sampling_pool,
+      k=current_step,
+      simplicity=simplicity,
+      dataset=train_data
+    )
 
-    chosen_positions = sampling_strategy(sampling_pool, training_dynamics=tr_dynamics, dataset=train_data, k=current_step)
-    
-    # SANITY CHECK
-    #chosen_labels = []
-    #from collections import Counter
-    #for pos in chosen_positions:
-    #  _, _, y, _ = train_data[pos] 
-    #  label = y.item() if isinstance(y, torch.Tensor) else y
-    #  chosen_labels.append(label)
-        
-    #label_counts = Counter(chosen_labels)
-    #logger.info(f"--- Class Distribution for this {len(chosen_positions)} sample batch ---")
-    #for label, count in sorted(label_counts.items()):
-    #  logger.info(f"  Class {label}: {count} samples")
-    #logger.info("---------------------------------------------------------")
-    # SANITY CHECK
+    log_sample_distribution(chosen_positions, train_data, logger)
 
-    # Process the batch
+    # Update explained samples
     for pos in chosen_positions:
       explained_ids.append(pos)
       xil_train_dataset.activate_explanation(pos)
@@ -150,22 +180,38 @@ def xil_loop(
     load_checkpoint(RESET_CHECKPOINT, model, device)
     # Init optimizer and losses
     optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
-    train_loss = load_loss_fun("RRR", reg_rate=rrr_reg_rate) # RRR
+    train_loss = load_loss_fun("RRR", reg_rate=rrr_reg_rate)
     eval_loss = load_loss_fun("CrossEntropy")
     train_loader = DataLoader(xil_train_dataset, batch_size=32)
 
     _, _ = train_model(model, train_loader, optim, train_loss, 10, val_loader, device=device)
     loss, acc = eval_model(model, test_loader, eval_loss, device)
-    logger.info(f"Iteration Progress: {query_count}/{budget} samples explained. Performance acc= {acc}, loss={loss}")
+    logger.info(f"{query_count}/{budget}.\nTest acc= {acc:.2f} | loss={loss:.2f}")
+    
+    all_attr, _ = explain_dataset(train_loader, model, device)
+    exp_penalty, class_penalty = evaluate_explainations(all_attr, train_data.masks, train_data.y)
+    logger.info(f"conf ratio={exp_penalty:.4f}")
+    logger.info(f"{class_penalty}")
     
     log['accuracy'].append(acc)
+    log['loss'].append(loss)
     log['query'].append(query_count)
 
-    #all_attr, all_imgs = explain_dataset(val_loader, model, device)
-    #exp_mse = evaluate_explainations(all_attr, val_loader.dataset.masks)
-    #print(f"Explaination MSE: {exp_mse:.2f}")
-
   return log
+
+
+def xil_sampling(strategy: str, **kwargs) -> list:
+  strategy_map = {
+    "random": random_sampling,
+    "simplicity": simplicity_sampling
+  }
+
+  if strategy not in strategy_map.keys():
+    raise ValueError("Wrong sampling strategy name.")
+
+  sampling_fun = strategy_map[strategy]
+  chosen = sampling_fun(**kwargs)
+  return chosen
 
 def random_sampling(sampling_pool:list, k:int, **kwargs) -> list:
   """Baseline sampling strategy that picks k random samples from the pool.
@@ -178,7 +224,7 @@ def random_sampling(sampling_pool:list, k:int, **kwargs) -> list:
   chosen = random.sample(sampling_pool,k)
   return chosen
 
-def simplicity_sampling(sampling_pool:list,training_dynamics: dict, dataset:Any, k:int) -> list:
+def simplicity_sampling(sampling_pool:list, simplicity: dict, dataset:Any, k:int) -> list:
   """Sample k samples by taking simplest ones.
   Args:
     sampling_pool (list): list of available sample positions.
@@ -189,7 +235,7 @@ def simplicity_sampling(sampling_pool:list,training_dynamics: dict, dataset:Any,
     int: chosen samples.
   """
   # sampling_pool uses positional ids, i need to return from ids of sample to positional
-  simplicity = compute_simplicity(training_dynamics, metric = "MP") # ids of samples
+  #simplicity = compute_simplicity(training_dynamics, metric = "MP") # ids of samples
 
   # Sort the sampling pool by simplicity
   sorted_pool = sorted(
@@ -197,9 +243,7 @@ def simplicity_sampling(sampling_pool:list,training_dynamics: dict, dataset:Any,
     key=lambda internal_idx: simplicity[dataset.indices[internal_idx]], 
     reverse=True
   )
-
   chosen = sorted_pool[:k]
-
   return chosen
 
 
@@ -235,7 +279,6 @@ def compute_simplicity(training_dynamics: dict, metric: str = "MP") -> dict:
         simplicity[id] = 0.0
 
   return simplicity
-
 
 def plot_xil_log(log_random: dict, log_simplicity:dict, dataset_name:str, filename: str) -> None:
   plt.figure(figsize=(10, 6))

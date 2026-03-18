@@ -15,4 +15,4 @@
 source ~/.bashrc
 conda activate "thesis"
 
-python try.py
+python "${1}.py"

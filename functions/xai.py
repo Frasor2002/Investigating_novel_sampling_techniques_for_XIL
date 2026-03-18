@@ -129,6 +129,7 @@ def explain_dataset(loader: DataLoader, model: nn.Module, device: str="cpu") -> 
   model.eval()
   attr_lists = []
   imgs_lists = []
+  masks_lists = []
 
   loop = tqdm(loader, desc="Explaining", leave=False)
   for indices, imgs, targets, masks in loop:
@@ -140,15 +141,15 @@ def explain_dataset(loader: DataLoader, model: nn.Module, device: str="cpu") -> 
     # Save attrs
     attr_lists.append(attrs.detach().cpu())
     all_attr = torch.cat(attr_lists, dim=0)
-
     # Save imgs
     imgs_lists.append(imgs.detach().cpu())
     all_images = torch.cat(imgs_lists, dim=0)
 
+
   return all_attr, all_images
 
 
-def evaluate_explainations(pred_expl: torch.Tensor, gt_expl: torch.Tensor) -> Any:
+def evaluate_explainations(pred_expl: torch.Tensor, gt_expl: Any, targets: Any) -> tuple:
   """Evaluate model explaination by computing a penalty.
   Args:
     pred_expl (Tensor): model attributions.
@@ -157,16 +158,28 @@ def evaluate_explainations(pred_expl: torch.Tensor, gt_expl: torch.Tensor) -> An
     Any: penalty score.
   """
   pred = pred_expl.squeeze().detach().cpu().numpy()
-  gt = gt_expl.squeeze().detach().cpu().numpy()
+  gt = gt_expl
+  y = targets
 
   pred_abs = np.abs(pred)
-
   attribution_on_confounder = np.sum(pred_abs * gt)
   total_attribution = np.sum(pred_abs)
-
   epsilon = 1e-8
   penalty = attribution_on_confounder / (total_attribution + epsilon)
 
-  return float(penalty)
+  class_penalties = {}
+  unique_classes = np.unique(y)
+  for cls in unique_classes:
+    idx = np.where(y == cls)[0] 
+    cls_pred = pred_abs[idx]
+    cls_gt = gt[idx]
+        
+    attribution_on_confounder = np.sum(cls_pred * cls_gt)
+    total_attribution = np.sum(cls_pred)
+        
+    penalty = attribution_on_confounder / (total_attribution + epsilon)
+    class_penalties[int(cls)] = float(penalty)
+
+  return float(penalty), class_penalties
 
   

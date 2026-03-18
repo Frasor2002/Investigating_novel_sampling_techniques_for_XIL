@@ -1,5 +1,5 @@
 from model.resnet import load_resnet
-from model.lenet import load_lenet
+from model.lenet import load_modern_lenet, load_classic_lenet
 from model.mlp import load_mlp
 from typing import Any
 from torch.nn import Module
@@ -8,7 +8,8 @@ def load_model(name: str, **kwargs: Any) -> Module:
   """Load a model"""
 
   model_loaders = {
-    "LeNet": load_lenet,
+    "ModernLeNet": load_modern_lenet,
+    "LeNet": load_classic_lenet,
     "MLP": load_mlp,
     "ResNet": load_resnet
   }

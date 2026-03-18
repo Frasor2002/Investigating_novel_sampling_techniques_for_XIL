@@ -167,7 +167,7 @@ class DecoyDataset(Dataset):
       to_tensor = transforms.ToTensor()
       x = to_tensor(x)
     
-    mask = torch.from_numpy(mask)
+    mask = torch.from_numpy(mask).unsqueeze(0).float()
 
     return index, x, y, mask
   

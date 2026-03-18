@@ -13,38 +13,32 @@ RESET_CHECKPOINT="reset_model"
 
 def exp_xil_loop(
   seed: int = 123, 
-  model_name : str = "LeNet",
-  model_variant: str = "modern",
+  model_name : str = "ModernLeNet",
   dataset: str = "DecoyMNIST", 
-  variation: int = 0,
-  sampling_strategy: Any = random_sampling,
+  bias_ratio: list = [0.99]*10,
+  conf_type: int = 0,
+  sampling_strategy: str = "random",
   budget:int=1000,
   step:int=1,
   initial_query:int=0,
   rr_reg: float=1,
-  log_filename:str="xil_log"
 ):
   use_cuda = torch.cuda.is_available()
   device = 'cuda' if use_cuda else 'cpu'
   enable_reproducibility(seed)
 
-  if model_name == "LeNet":
-    model = load_model(model_name, device=device, variant=model_variant)
-  else:
-    model = load_model(model_name, device=device)
 
-  # setup for the reset checkpoint later
+  model = load_model(model_name, device=device)
   save_checkpoint(RESET_CHECKPOINT, model)
-  
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
   loss = load_loss_fun("CrossEntropy")
 
   train_set, val_set, test_set = load_data(
-    dataset, 
+    name=dataset, 
     seed=seed, 
     reload=True,
-    bias_ratio=[0.99]*10,
-    variation=variation
+    bias_ratio=bias_ratio,
+    variation=conf_type
   )
   
   data = [train_set, val_set, test_set]
@@ -53,10 +47,10 @@ def exp_xil_loop(
   train_loader, val_loader, test_loader = create_dataloaders(data, m_params)
 
   _, dyn = train_model(
-    model, 
-    train_loader, 
-    optim, 
-    loss, 
+    model=model, 
+    train_loader=train_loader, 
+    optimizer=optim, 
+    loss_fun=loss, 
     n_epochs=10, 
     eval_loader=val_loader, 
     device=device
@@ -64,10 +58,9 @@ def exp_xil_loop(
   loss, acc = eval_model(model, test_loader, loss,  device)
   print("="*20,f"Test set Loss:{loss:.2f} | Acc:{acc:.2f}.","="*20)
 
-  #rr_reg = 1 if dataset == "DecoyMNIST" else 1e-3
 
   # Run XIL loop
-  query = xil_loop(
+  log = xil_loop(
     train_data=train_set,
     model=model, 
     sampling_strategy=sampling_strategy,
@@ -78,15 +71,8 @@ def exp_xil_loop(
     step_size=step,
     starting_query=initial_query,
     rrr_reg_rate=rr_reg,
-    log_filename=log_filename,
+    log_filename=f"{sampling_strategy}_{conf_type}_{model_name}_{dataset}",
     device=device
-  )
-
-
-
-
-
-
-  
+  )  
   
   

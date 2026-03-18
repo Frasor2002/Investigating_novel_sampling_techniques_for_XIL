@@ -7,14 +7,15 @@ from functions.loss import load_loss_fun
 from functions.functions import train_model, eval_model, save_checkpoint, load_checkpoint
 from functions.xil import compute_simplicity
 from utils.utils import enable_reproducibility
-from experiments.utils import compute_correlations
+from experiments.utils import compute_correlations, compute_auc_roc,log_corr_results, log_auc_results
+
 
 def exp_train_dynamics(
   seed: int = 123, 
-  model_name : str = "LeNet",
-  model_variant: str = "modern",
+  model_name : str = "ModernLeNet",
   dataset: str = "DecoyMNIST", 
-  variation: int = 0 ,
+  bias_ratio: list = [0.99]*10,
+  conf_type: int = 0 ,
   metric: str= "MP") -> dict:
   """Run experiment to see how training dynamics correlate with confounder presence.
   Args:
@@ -26,12 +27,9 @@ def exp_train_dynamics(
   """
   use_cuda = torch.cuda.is_available()
   device = 'cuda' if use_cuda else 'cpu'
-
   enable_reproducibility(seed)
-  if model_name == "LeNet":
-    model = load_model(model_name, device=device, variant=model_variant)
-  else:
-    model = load_model(model_name, device=device)
+
+  model = load_model(model_name, device=device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
   loss = load_loss_fun("CrossEntropy")
 
@@ -39,8 +37,8 @@ def exp_train_dynamics(
     dataset, 
     seed=seed, 
     reload=True,
-    bias_ratio=[0.99]*10,
-    variation=variation
+    bias_ratio=bias_ratio,
+    variation=conf_type
   )
   
   data = [train_set, val_set, test_set]
@@ -49,10 +47,10 @@ def exp_train_dynamics(
   train_loader, val_loader, test_loader = create_dataloaders(data, m_params)
 
   _, dyn = train_model(
-    model, 
-    train_loader, 
-    optim, 
-    loss, 
+    model=model, 
+    train_loader=train_loader, 
+    optimizer=optim, 
+    loss_fun=loss, 
     n_epochs=10, 
     eval_loader=val_loader, 
     device=device
@@ -72,5 +70,8 @@ def exp_train_dynamics(
     labels.append(label.item())
 
   result = compute_correlations(separation_list, is_confounded, labels)
+  log_corr_results(result, filename=f"td_corr_{model_name}_{dataset}_{conf_type}")
+  result = compute_auc_roc(separation_list, is_confounded, labels)
+  log_auc_results(result, filename=f"td_{model_name}_{dataset}_{conf_type}")
 
   return result

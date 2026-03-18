@@ -63,22 +63,27 @@ class LeNet(torch.nn.Module):
     return x
 
 
-def load_lenet(variant: str= "classic", device: str = "cuda") -> Union[ModernLeNet,LeNet]:
+def load_modern_lenet(device: str = "cuda") -> Union[ModernLeNet,LeNet]:
   """Load LeNet model.
   Args:
-    variant (str): can be 'classic' or 'modern' variant.
     device (str): device where model is loaded.
   Returns:
     Union[LeNet,ModernLeNet]: model created.
-  
   """
-  if variant not in ['classic', 'modern']:
-    raise ValueError("Wrong LeNet variant name.")
-  
-  if variant == 'classic':
-    model = LeNet()
-  else:
-    model = ModernLeNet()
+ 
+  model = ModernLeNet()
+  model = model.to(device)
+  return model
 
+
+def load_classic_lenet(device: str = "cuda") -> Union[ModernLeNet,LeNet]:
+  """Load LeNet model.
+  Args:
+    device (str): device where model is loaded.
+  Returns:
+    Union[LeNet,ModernLeNet]: model created.
+  """
+
+  model = LeNet()
   model = model.to(device)
   return model
