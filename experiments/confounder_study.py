@@ -228,7 +228,8 @@ def exp_confounder_study(
   model_name : str = "ModernLeNet",
   dataset: str = "DecoyMNIST",
   bias_ratio: list = [0.99]*10,
-  conf_type: int = 0
+  conf_type: int = 0,
+  add:str = ""
 ) -> None:
   use_cuda = torch.cuda.is_available()
   device = 'cuda' if use_cuda else 'cpu'
@@ -269,4 +270,4 @@ def exp_confounder_study(
   #print("="*20,f"Avg penalty:{avg_penalty:.2f} | Conf ratio:{conf_ratio:.2f}.","="*20)
 
   # Plot losses and training
-  plot_training_log(log, f"cs_{dataset}_{conf_type}_{model_name}")
+  plot_training_log(log, f"cs_{dataset}_{conf_type}_{model_name}_{add}")

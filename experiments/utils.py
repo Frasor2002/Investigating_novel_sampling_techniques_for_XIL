@@ -85,6 +85,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(BASE_DIR, "log")
 PLOT_DIR = os.path.join(LOG_DIR, "plot")
 
+
 def log_corr_results(result: dict, filename: str) -> None:
   path = os.path.join(LOG_DIR, f"{filename}.log")
   os.makedirs(LOG_DIR, exist_ok=True)
@@ -93,11 +94,13 @@ def log_corr_results(result: dict, filename: str) -> None:
     total_corr = result['total']
     class_corr = result['class']
     
-    f.write(f"Total correlation: stat={total_corr[0]:.4f} | pval={total_corr[1]}")
-    f.write("\n\n")
+    f.write(f"Total correlation: stat={total_corr[0]:.4f} | pval={total_corr[1]}\n\n")
+    
     for key, val in class_corr.items():
-      f.write(f"Class correlation for label {key}: stat={val[0]:.4f} | pval={val[1]}")
-      f.write("\n")
+      if isinstance(val, float):
+        f.write(f"Class correlation for label {key}: stat=NaN | pval=NaN\n")
+      else:
+        f.write(f"Class correlation for label {key}: stat={val[0]:.4f} | pval={val[1]}\n")
 
 
 def log_auc_results(result: dict, filename: str) -> None:
@@ -114,8 +117,3 @@ def log_auc_results(result: dict, filename: str) -> None:
       f.write(f"Class auc for label {key}: {val:.4f}")
       f.write("\n")
       
-
-# TODO utility to plot the different corralation for visualization
-def plot_results(result: dict, filename: str) -> None:
-  pass
-  

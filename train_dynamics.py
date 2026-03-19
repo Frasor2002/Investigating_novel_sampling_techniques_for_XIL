@@ -5,7 +5,7 @@ if __name__ == "__main__":
   SEED = 123
   MODEL="ModernLeNet"
   DATASET="DecoyMNIST"
-  BIAS_RATIO= [0,0.99,0,0,0,0.99,0,0,0.99,0.99] #[0.99]*10
+  BIAS_RATIO=[0,0.99,0.99,0.99,0.99,0.99,0,0,0.99,0.99] #[0.99]*10
 
   exp_train_dynamics(
     seed=SEED,
