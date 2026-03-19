@@ -188,11 +188,14 @@ def xil_loop(
     loss, acc = eval_model(model, test_loader, eval_loss, device)
     logger.info(f"{query_count}/{budget}.\nTest acc= {acc:.2f} | loss={loss:.2f}")
     
+
     all_attr, _ = explain_dataset(train_loader, model, device)
     exp_penalty, class_penalty = evaluate_explainations(all_attr, train_data.masks, train_data.y)
+    print(exp_penalty)
     logger.info(f"conf ratio={exp_penalty:.4f}")
     logger.info(f"{class_penalty}")
     
+
     log['accuracy'].append(acc)
     log['loss'].append(loss)
     log['query'].append(query_count)

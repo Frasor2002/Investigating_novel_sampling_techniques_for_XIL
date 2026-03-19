@@ -52,10 +52,7 @@ def exp_explaination_entropy(
   device = 'cuda' if use_cuda else 'cpu'
 
   enable_reproducibility(seed)
-  if model_name == "LeNet":
-    model = load_model(model_name, device=device, variant=model_variant)
-  else:
-    model = load_model(model_name, device=device)
+  model = load_model(model_name, device=device)
   optim = load_optimizer("SGD", model.parameters(), lr=1e-2, weight_decay=0)
   loss = load_loss_fun("CrossEntropy")
 

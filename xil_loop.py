@@ -3,10 +3,10 @@ from experiments.xil_loop import exp_xil_loop
 SEED = 123
 MODEL="ModernLeNet"
 DATASET="DecoyMNIST"
-BIAS_RATIO= [0,0.99,0,0,0,0.99,0,0,0.99,0.99]
+BIAS_RATIO=  [0,0.99,0,0,0,0.99,0,0,0.99,0.99] #[0.99]*10
 CONF_TYPE=2
 SAMPLING="simplicity"
-BUDGET=5000
+BUDGET=2000
 STEP=100
 INITIAL=0
 RR_REG=1e-1
