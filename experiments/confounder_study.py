@@ -18,7 +18,8 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import torch.nn.functional as F
-
+from experiments.utils import compute_correlations, compute_auc_roc,log_corr_results, log_auc_results
+from functions.xil import compute_simplicity
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOG_DIR = os.path.join(BASE_DIR, "log")
@@ -250,7 +251,7 @@ def exp_confounder_study(
   m_params = [params]*3
   train_loader, val_loader, test_loader = create_dataloaders(data, m_params)
 
-  log, _ = train_model(
+  log, dyn = train_model(
     model=model, 
     train_loader=train_loader, 
     optimizer=optim, 
@@ -262,12 +263,28 @@ def exp_confounder_study(
   loss, acc = eval_model(model, test_loader, loss,  device)
   print("="*20,f"Test set Loss:{loss:.2f} | Acc:{acc:.2f}.","="*20)
   #avg_penalty, conf_ratio = eval_confounding(model, train_loader, device)
-  all_attr, _ = explain_dataset(train_loader, model, device)
-  exp_penalty, class_penalty = evaluate_explainations(all_attr, train_set.masks, train_set.y)
-  print("="*20,f"Exp penalty:{exp_penalty:.2f}.","="*20)
-  print(class_penalty)
+  #all_attr, _ = explain_dataset(train_loader, model, device)
+  #exp_penalty, class_penalty = evaluate_explainations(all_attr, train_set.masks, train_set.y)
+  #print("="*20,f"Exp penalty:{exp_penalty:.2f}.","="*20)
+  #print(class_penalty)
 
   #print("="*20,f"Avg penalty:{avg_penalty:.2f} | Conf ratio:{conf_ratio:.2f}.","="*20)
 
   # Plot losses and training
   plot_training_log(log, f"cs_{dataset}_{conf_type}_{model_name}_{add}")
+
+  simplicity = compute_simplicity(dyn, metric="MP")
+
+  separation_list = []
+  is_confounded = []
+  labels = []
+  for id in range(len(train_set)):
+    index, _, label, mask = train_set[id] 
+    separation_list.append(simplicity[index])
+    is_confounded.append(1 if mask.sum() > 1 else 0)
+    labels.append(label.item())
+
+  result = compute_correlations(separation_list, is_confounded, labels)
+  log_corr_results(result, filename=f"td_corr_{model_name}_{dataset}_{conf_type}_{add}")
+  result = compute_auc_roc(separation_list, is_confounded, labels)
+  log_auc_results(result, filename=f"td_{model_name}_{dataset}_{conf_type}_{add}")
