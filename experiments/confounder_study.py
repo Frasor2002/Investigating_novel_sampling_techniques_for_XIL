@@ -210,6 +210,8 @@ def plot_training_log(log: dict, filename: str) -> None:
     axes[1].grid(True)
     fig1.tight_layout()
     fig1.savefig(filepath1)
+    plt.close()
+
 
     fig2, ax = plt.subplots(figsize=(6, 5))
     ax.plot(epochs, log["train_confounded_loss"], label="Confounded Loss", marker='o', linestyle='--')
@@ -222,6 +224,7 @@ def plot_training_log(log: dict, filename: str) -> None:
     
     fig2.tight_layout()
     fig2.savefig(filepath2)
+    plt.close()
 
 
 def exp_confounder_study(

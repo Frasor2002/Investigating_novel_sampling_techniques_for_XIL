@@ -14,8 +14,8 @@ if __name__ == "__main__":
   SEED = 123
   MODEL="ModernLeNet"
   DATASET="DecoyMNIST"
-  BIAS_RATIO=[0,0.99,0,0,0,0,0,0,0.99,0.99] #[0.99]*10 #[0,0.99,0,0,0,0.99,0,0,0.99,0.99]
-  CONF_TYPES=[2] # [0,1,2]
+  #BIAS_RATIO=[0,0.99,0,0,0,0,0,0,0.99,0.99] #[0.99]*10 #[0,0.99,0,0,0,0.99,0,0,0.99,0.99]
+  CONF_TYPES=[0,1,2] # [0,1,2]
 
   for i in range(len(BS_LIST)):
     for conf in CONF_TYPES:
