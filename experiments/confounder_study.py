@@ -274,6 +274,7 @@ def exp_confounder_study(
   #print("="*20,f"Avg penalty:{avg_penalty:.2f} | Conf ratio:{conf_ratio:.2f}.","="*20)
 
   # Plot losses and training
+  print(" | ".join(f"{k}: {v:.4f}" if isinstance(v, float) else f"{k}: {v}" for k, v in log.items()))
   plot_training_log(log, f"cs_{dataset}_{conf_type}_{model_name}_{add}")
 
   simplicity = compute_simplicity(dyn, metric="MP")
@@ -290,4 +291,4 @@ def exp_confounder_study(
   result = compute_correlations(separation_list, is_confounded, labels)
   log_corr_results(result, filename=f"td_corr_{model_name}_{dataset}_{conf_type}_{add}")
   result = compute_auc_roc(separation_list, is_confounded, labels)
-  log_auc_results(result, filename=f"td_{model_name}_{dataset}_{conf_type}_{add}")
+  log_auc_results(result, filename=f"td_auroc_{model_name}_{dataset}_{conf_type}_{add}")

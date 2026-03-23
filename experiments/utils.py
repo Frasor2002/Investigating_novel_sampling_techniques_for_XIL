@@ -4,6 +4,8 @@ import numpy as np
 from numpy.typing import ArrayLike
 import os
 import matplotlib.pyplot as plt
+import torch
+from torchmetrics.functional.classification import binary_auroc
 
 def compute_correlations(separation_list: ArrayLike, is_confounded: ArrayLike, labels: ArrayLike) -> dict:
   """Function to compute correlation between a separation strategy and actual confounder
@@ -52,28 +54,25 @@ def compute_auc_roc(separation_list: ArrayLike, is_confounded: ArrayLike, labels
   Returns:
     dict: total and classwise auc roc score. 
   """
-  separation_list = np.array(separation_list)
-  is_confounded = np.array(is_confounded)
-  labels = np.array(labels)
-  
-  # Total score
-  total_auc = roc_auc_score(is_confounded, separation_list)
+  preds = torch.as_tensor(separation_list)
+  target = torch.as_tensor(is_confounded)
+  labels_tensor = torch.as_tensor(labels)
+    
+  total_auc = binary_auroc(preds, target).item()
 
   # Class-wise AUC-ROC
   class_auc = {}
-  unique_classes = np.unique(labels)
+  unique_classes = torch.unique(labels_tensor)
 
   for label in unique_classes:
-    class_mask = (labels == label)
-    c_scores = separation_list[class_mask]
-    c_conf = is_confounded[class_mask]
+    class_mask = (labels_tensor == label)
+    c_scores = preds[class_mask]
+    c_conf = target[class_mask]
       
-    # ROC AUC needs at least one confounded sample to be there
-    if len(np.unique(c_conf)) > 1:
-      class_auc[int(label)] = roc_auc_score(c_conf, c_scores)
+    if len(torch.unique(c_conf)) > 1:
+      class_auc[int(label.item())] = binary_auroc(c_scores, c_conf).item()
     else:
-      class_auc[int(label)] = np.nan
-
+      class_auc[int(label.item())] = float('nan')
 
   return {
     "total": total_auc,

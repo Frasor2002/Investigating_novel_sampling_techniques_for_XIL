@@ -6,19 +6,19 @@ if __name__ == "__main__":
     [0.50]*10,
     [0,0,0,0.99,0.99,0.99,0.99,0.99,0.99,0.99],
     [0,0,0,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
-    [0,0,0,0,0,0,0,0.99,0.99,0.99],
-    [0,0,0,0,0,0,0,0.5,0.5,0.5]
+    #[0,0,0,0,0,0,0,0.99,0.99,0.99],
+    #[0,0,0,0,0,0,0,0.5,0.5,0.5]
   ]
 
 
   SEED = 123
   MODEL="ModernLeNet"
   DATASET="DecoyMNIST"
-  #BIAS_RATIO=[0,0.99,0,0,0,0,0,0,0.99,0.99] #[0.99]*10 #[0,0.99,0,0,0,0.99,0,0,0.99,0.99]
   CONF_TYPES=[0,1,2] # [0,1,2]
 
   for i in range(len(BS_LIST)):
     for conf in CONF_TYPES:
+      print(f"Confounder: {conf} | Bias ratio: {BS_LIST[i]}")
       exp_confounder_study(
         seed=SEED,
         model_name=MODEL,
