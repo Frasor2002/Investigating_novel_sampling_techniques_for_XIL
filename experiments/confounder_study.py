@@ -89,13 +89,13 @@ def train_epoch(model: nn.Module, train_loader: DataLoader, optimizer: Optimizer
     _, predicted_labels = torch.max(logits, 1)
     correct_preds += (predicted_labels == targets).sum().item()
 
-  with torch.no_grad():
-    is_confounded = masks.view(batch_size, -1).sum(dim=1) > 0   
-    per_sample_loss = F.cross_entropy(logits, targets, reduction='none')
-    confounded_loss_total += per_sample_loss[is_confounded].sum().item()
-    confounded_count += is_confounded.sum().item()
-    unconfounded_loss_total += per_sample_loss[~is_confounded].sum().item()
-    unconfounded_count += (~is_confounded).sum().item()
+    with torch.no_grad():
+      is_confounded = masks.view(batch_size, -1).sum(dim=1) > 0   
+      per_sample_loss = F.cross_entropy(logits, targets, reduction='none')
+      confounded_loss_total += per_sample_loss[is_confounded].sum().item()
+      confounded_count += is_confounded.sum().item()
+      unconfounded_loss_total += per_sample_loss[~is_confounded].sum().item()
+      unconfounded_count += (~is_confounded).sum().item()
   
   # Compute averages over entire data
   train_loss = running_loss / tot_samples
@@ -219,6 +219,7 @@ def plot_training_log(log: dict, filename: str) -> None:
     ax.set_title("Train Loss by Subgroup")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
+    ax.set_yticks(np.arange(0, 3.5, 0.5))
     ax.legend()
     ax.grid(True)
     

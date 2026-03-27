@@ -6,25 +6,44 @@ if __name__ == "__main__":
     [0.50]*10,
     [0,0,0,0.99,0.99,0.99,0.99,0.99,0.99,0.99],
     [0,0,0,0.5,0.5,0.5,0.5,0.5,0.5,0.5],
-    #[0,0,0,0,0,0,0,0.99,0.99,0.99],
-    #[0,0,0,0,0,0,0,0.5,0.5,0.5]
+    [0,0,0,0,0,0,0,0.99,0.99,0.99],
+    [0,0,0,0,0,0,0,0.5,0.5,0.5]
   ]
 
 
   SEED = 123
+  MODEL_LIST=["LeNet", "ModernLeNet","MLP"]
   MODEL="ModernLeNet"
   DATASET="DecoyMNIST"
   CONF_TYPES=[0,1,2] # [0,1,2]
 
+  print(f"Dataset {DATASET}")
   for i in range(len(BS_LIST)):
     for conf in CONF_TYPES:
-      print(f"Confounder: {conf} | Bias ratio: {BS_LIST[i]}")
-      exp_confounder_study(
-        seed=SEED,
-        model_name=MODEL,
-        dataset=DATASET,
-        bias_ratio=BS_LIST[i],
-        conf_type=conf,
-        add=str(i)
-      )
+      for model in MODEL_LIST:
+        print(f"Confounder: {conf} | Bias ratio: {BS_LIST[i]} | Model: {model}")
+        exp_confounder_study(
+          seed=SEED,
+          model_name=model,
+          dataset=DATASET,
+          bias_ratio=BS_LIST[i],
+          conf_type=conf,
+          add=str(i)
+        )
+
+
+  DATASET="DecoyFashionMNIST"
+  print(f"Dataset {DATASET}")
+  for i in range(len(BS_LIST)):
+    for conf in CONF_TYPES:
+      for model in MODEL_LIST:
+        print(f"Confounder: {conf} | Bias ratio: {BS_LIST[i]} | Model: {model}")
+        exp_confounder_study(
+          seed=SEED,
+          model_name=model,
+          dataset=DATASET,
+          bias_ratio=BS_LIST[i],
+          conf_type=conf,
+          add=str(i)
+        )
  

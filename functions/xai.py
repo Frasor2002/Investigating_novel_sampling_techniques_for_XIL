@@ -8,6 +8,8 @@ from torch.utils.data.dataloader import DataLoader
 import torch.nn as nn
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from torchmetrics.functional.classification import binary_auroc
+
 
 def visualize_k_expl(all_attr: torch.Tensor, all_imgs: torch.Tensor, dataset: Any, target_label:int, k: int=3):
   """Visualizer helper to plot k attributions given a label.
@@ -158,7 +160,7 @@ def evaluate_explainations(pred_expl: torch.Tensor, gt_expl: Any, targets: Any) 
   Returns:
     Any: penalty score.
   """
-  pred = pred_expl.squeeze().detach().cpu().numpy()
+  pred = pred_expl.squeeze().detach().cpu()
   gt = gt_expl
   y = targets
 
@@ -167,20 +169,29 @@ def evaluate_explainations(pred_expl: torch.Tensor, gt_expl: Any, targets: Any) 
   pred_flat = pred.reshape(batch_size, -1)
   gt_flat = gt.reshape(batch_size, -1)
     
-  attr_on_conf_per_image = np.sum(pred_flat * gt_flat, axis=1)
-  total_mass = np.sum(pred_flat, axis=1)
+  attr_on_conf_per_image = torch.sum(pred_flat * gt_flat, dim=1)
+  total_mass = torch.sum(pred_flat, dim=1)
+  attribution_percentage = attr_on_conf_per_image / total_mass
 
-  penalty_per_image = attr_on_conf_per_image / total_mass
+  confounder_presence = (torch.sum(gt_flat, dim=1) > 0).long()
+
     
-  global_penalty = np.mean(penalty_per_image)
+  global_auroc = binary_auroc(attribution_percentage, confounder_presence)
 
-  class_penalties = {}
+  class_aurocs = {}
   unique_classes = np.unique(y)
   for cls in unique_classes:
     idx = np.where(y == cls)[0] 
-    cls_penalty = np.mean(penalty_per_image[idx])
-    class_penalties[int(cls)] = float(cls_penalty)
+    cls_presence = confounder_presence[idx]
+    cls_scores = attribution_percentage[idx]
+        
+    try:
+      cls_auroc = binary_auroc(cls_presence, cls_scores)
+    except ValueError:
+      cls_auroc = float('nan')
+            
+    class_aurocs[int(cls)] = float(cls_auroc)
 
-  return float(global_penalty), class_penalties
+  return float(global_auroc), class_aurocs
 
   
