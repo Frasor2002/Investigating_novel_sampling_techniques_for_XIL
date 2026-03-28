@@ -161,37 +161,48 @@ def evaluate_explainations(pred_expl: torch.Tensor, gt_expl: Any, targets: Any) 
     Any: penalty score.
   """
   pred = pred_expl.squeeze().detach().cpu()
-  gt = gt_expl
+  gt = torch.tensor(gt_expl)
   y = targets
 
   pred = pred ** 2
   batch_size = pred.shape[0]
   pred_flat = pred.reshape(batch_size, -1)
   gt_flat = gt.reshape(batch_size, -1)
+
+  is_confounded = (torch.sum(gt_flat, dim=1) > 0)
+  pred_conf = pred_flat[is_confounded]
+  gt_conf = gt_flat[is_confounded]
+  y_conf = np.array(targets)[is_confounded.numpy()]
     
-  attr_on_conf_per_image = torch.sum(pred_flat * gt_flat, dim=1)
-  total_mass = torch.sum(pred_flat, dim=1)
-  attribution_percentage = attr_on_conf_per_image / total_mass
+  attr_on_conf = torch.sum(pred_conf * gt_conf, dim=1)
+  total_attr = torch.sum(pred_conf, dim=1)
+  attribution_percentage = torch.where(
+    total_attr > 0, 
+    attr_on_conf / total_attr, 
+    torch.zeros_like(total_attr)
+  )
+  global_score = float(attribution_percentage.mean().item())
 
-  confounder_presence = (torch.sum(gt_flat, dim=1) > 0).long()
+  num_total = batch_size
+  num_confounded = is_confounded.sum().item()
+  num_unconfounded = num_total - num_confounded
+  
+  pct_confounded = (num_confounded / num_total) * 100
+  pct_unconfounded = (num_unconfounded / num_total) * 100
+  
+  #print(f"Total samples in batch: {num_total}")
+  #print(f"Unconfounded (Mask == 0): {num_unconfounded} samples ({pct_unconfounded:.2f}%)")
+  #print(f"Confounded   (Mask >  0): {num_confounded} samples ({pct_confounded:.2f}%)")    
 
-    
-  global_auroc = binary_auroc(attribution_percentage, confounder_presence)
-
-  class_aurocs = {}
-  unique_classes = np.unique(y)
+  class_scores = {}
+  unique_classes = np.unique(y_conf)
   for cls in unique_classes:
-    idx = np.where(y == cls)[0] 
-    cls_presence = confounder_presence[idx]
-    cls_scores = attribution_percentage[idx]
-        
-    try:
-      cls_auroc = binary_auroc(cls_presence, cls_scores)
-    except ValueError:
-      cls_auroc = float('nan')
+    idx = np.where(y_conf == cls)[0] 
+    if len(idx) > 0:
+      cls_score = float(attribution_percentage[idx].mean().item())
+      class_scores[int(cls)] = cls_score
+  
             
-    class_aurocs[int(cls)] = float(cls_auroc)
-
-  return float(global_auroc), class_aurocs
+  return float(global_score), class_scores
 
   

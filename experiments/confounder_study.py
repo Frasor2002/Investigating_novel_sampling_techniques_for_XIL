@@ -219,7 +219,7 @@ def plot_training_log(log: dict, filename: str) -> None:
     ax.set_title("Train Loss by Subgroup")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Loss")
-    ax.set_yticks(np.arange(0, 3.5, 0.5))
+    ax.set_yticks(np.arange(0, 5, 0.5))
     ax.legend()
     ax.grid(True)
     
